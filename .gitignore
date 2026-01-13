@@ -1,0 +1,13 @@
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore Mac system files
+.DS_Store
+
+# Ignore Data and Outputs
+*.mrc
+*.star
+picked_heatmap/
+trashed_heatmap/
+S2/
