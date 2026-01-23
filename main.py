@@ -35,7 +35,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Cryo-EM Filament Picker")
     
-    parser.add_argument('input_dir', type=str, help="Directory containing input MRC files")
+    parser.add_argument('input_dir', type=str, help="Directory of your cryoSPARC S folder")
     parser.add_argument('output_dir', type=str, help="Directory to save STAR file and heatmaps")
     
     # Optional Physics Parameters
@@ -56,7 +56,7 @@ def main():
     # Create Output Directory
     os.makedirs(args.output_dir, exist_ok=True)
 
-    input_pattern = os.path.join(args.input_dir, '*_patch_aligned.mrc')
+    input_pattern = os.path.join(args.input_dir, 'motioncorrected/*_patch_aligned.mrc')
     output_star = os.path.join(args.output_dir, 'picked_micrographs.star')
 
     config = {
