@@ -45,8 +45,8 @@ python main.py [INPUT_DIR] [OUTPUT_DIR] --workers [NUM_WORKERS] --threshold [THR
 
 **Example:**
 ```bash
-python main.py path_to_the_sparc_folder/S1/ \\
-               path_to_output_folder/ \\
+python main.py path_to_the_sparc_folder/S1/ 
+               path_to_output_folder/ 
                --workers 12 --threshold 0.175
 ```
 * **Input Dir:** Your cryoSPARC output folder after fly motioncorr processing.
@@ -63,9 +63,9 @@ python build_relion.py --input_dir [RAW_DATA_PATH] --star_file [PICKED_STAR_PATH
 
 **Example:**
 ```bash
-python build_relion.py \\
-    --input_dir path_to_the_sparc_folder/S1/ \\
-    --star_file path_to_output_folder/picked_micrographs.star \\
+python build_relion.py 
+    --input_dir path_to_the_sparc_folder/S1/ 
+    --star_file path_to_output_folder/picked_micrographs.star 
     --output_folder path_to_relion_frames/
 ```
 
