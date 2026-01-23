@@ -5,7 +5,6 @@ import argparse
 import multiprocessing
 import signal
 import sys
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm 
 
 # Import our worker logic
@@ -15,6 +14,7 @@ import pipeline
 def worker_init():
     """Ensures workers ignore Ctrl+C so the main process handles cleanup."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    # Force 'spawn' context is set in main, but good to be safe regarding signal handling
 
 def main():
     # --- 2. CRITICAL: Handle Ctrl+C to release GPU ---
@@ -35,8 +35,6 @@ def main():
 
     parser = argparse.ArgumentParser(description="Cryo-EM Filament Picker")
     
-    # --- CHANGED: Positional Arguments ---
-    # These allow you to run: python main.py /path/to/input /path/to/output
     parser.add_argument('input_dir', type=str, help="Directory containing input MRC files")
     parser.add_argument('output_dir', type=str, help="Directory to save STAR file and heatmaps")
     
@@ -55,11 +53,9 @@ def main():
         print(f"Error: Input directory not found: {args.input_dir}")
         return
 
-    # Create Output Directory if it doesn't exist
+    # Create Output Directory
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Construct file paths based on the positional arguments
-    # Note: We append the glob pattern (*_patch_aligned.mrc) here automatically
     input_pattern = os.path.join(args.input_dir, '*_patch_aligned.mrc')
     output_star = os.path.join(args.output_dir, 'picked_micrographs.star')
 
@@ -69,7 +65,6 @@ def main():
         'periodicity': args.periodicity,
         'outer_resolution': 4.0, 
         'min_patches': 1,
-        # Save subfolders inside the user-defined output folder
         'picked_dir': os.path.join(args.output_dir, 'picked_heatmap'),
         'trashed_dir': os.path.join(args.output_dir, 'trashed_heatmap')
     }
@@ -83,43 +78,68 @@ def main():
         return
 
     print(f"Starting batch process on {len(files)} files...")
-    print(f"Input:   {args.input_dir}")
-    print(f"Output:  {args.output_dir}")
-    print(f"System:  {args.workers} workers on {multiprocessing.cpu_count()} CPUs")
+    print(f"System:  {args.workers} workers (Recycling every 1000 tasks)")
     print(":: Note: Press Ctrl+C once to force kill all GPUs.")
     
     start_time = time.time()
     count_picked = 0
     
+    # Prepare arguments for map (list of tuples)
+    # We need to pack (file, config) into a single arg because Pool.imap only takes one iterable
+    task_args = [(f, config) for f in files]
+
     with open(output_star, 'w') as star_f:
         star_f.write("\ndata_picked_micrographs\n\nloop_\n_rlnMicrographName #1\n_rlnFilamentPatchCount #2\n")
         
-        with ProcessPoolExecutor(max_workers=args.workers, initializer=worker_init) as executor:
-            future_to_file = {executor.submit(pipeline.process_single_file, f, config): f for f in files}
+        # --- CHANGED: Use multiprocessing.Pool instead of ProcessPoolExecutor ---
+        # maxtasksperchild=20: Restarts worker after 20 images to clear RAM/GPU memory
+        with multiprocessing.Pool(processes=args.workers, initializer=worker_init, maxtasksperchild=1000) as pool:
             
             try:
+                # imap_unordered is faster as it yields results as soon as they finish
+                # We use a helper wrapper to unpack arguments if needed, 
+                # but process_single_file takes (path, config) so we need a tiny shim or use starmap
+                
+                # Using starmap_async is tricky with tqdm, so we use imap with a lambda helper
+                # Actually, simpler: process_single_file needs to accept a tuple now? 
+                # No, let's use a wrapper function locally or verify pipeline.
+                
+                # Simple fix: Use starmap combined with tqdm is hard. 
+                # Easier strategy: modify task_args to be a single object or use a helper.
+                
+                # Let's use a lambda to unpack arguments for the worker
+                # But you can't pickle lambda. 
+                # So we use `starmap` which supports multiple args, but it consumes everything at once unless we use imap.
+                
+                # BEST APPROACH: Just map a helper function that unpacks the tuple
+                results_iter = pool.imap_unordered(pipeline_wrapper, task_args, chunksize=1)
+
                 with tqdm(total=len(files), unit="img") as pbar:
-                    for future in as_completed(future_to_file):
-                        try:
-                            filename, count, status = future.result()
-                            
-                            if count >= 1:
-                                star_f.write(f"{filename} {count}\n")
-                                star_f.flush()
-                                count_picked += 1
-                            
-                            pbar.set_postfix(last=status, picked=count_picked)
-                        except Exception as e:
-                            pbar.write(f"Critical error: {e}")
+                    for filename, count, status in results_iter:
+                        if count >= 1:
+                            star_f.write(f"{filename} {count}\n")
+                            star_f.flush()
+                            count_picked += 1
                         
+                        pbar.set_postfix(last=status, picked=count_picked)
                         pbar.update(1)
+
             except KeyboardInterrupt:
                 print("\nStopping...")
-                executor.shutdown(wait=False, cancel_futures=True)
+                pool.terminate()
+                pool.join()
                 raise
+            except Exception as e:
+                print(f"Main loop error: {e}")
+                pool.terminate()
 
     print(f"\n✓ Done in {time.time() - start_time:.1f}s.")
     print(f"  Picked {count_picked}/{len(files)} micrographs.")
+
+# --- Helper wrapper for Pool.imap ---
+def pipeline_wrapper(args):
+    # Unpack the tuple (file, config) and call the real function
+    return pipeline.process_single_file(args[0], args[1])
 
 if __name__ == '__main__':
     main()

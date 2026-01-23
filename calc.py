@@ -7,7 +7,7 @@ try:
     import cupyx.scipy.ndimage as ndi_xp
     from cupy.fft import fft2 as fft2_xp, fftshift as fftshift_xp
     HAS_GPU = True
-    print(":: GPU Detected. Using CuPy for acceleration.")
+    # print(":: GPU Detected. Using CuPy for acceleration.")
 except ImportError:
     import numpy as xp
     import scipy.ndimage as ndi_xp

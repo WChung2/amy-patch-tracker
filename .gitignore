@@ -11,5 +11,5 @@ __pycache__/
 picked_heatmap/
 trashed_heatmap/
 S2/
-venv
+venv/
 cryoem_filament_analysis.ipynb
