@@ -10,26 +10,26 @@ This tool performs high-speed filament detection on Cryo-EM micrographs using GP
 ## Installation
 
 1.  **Clone the repository:**
-    \`\`\`bash
+    ```bash
     git clone https://github.com/YOUR_USERNAME/amy-patch-tracker.git
     cd amy-patch-tracker
-    \`\`\`
+    ```
 
 2.  **Create a virtual environment:**
-    \`\`\`bash
+    ```bash
     python3 -m venv venv
-    \`\`\`
+    ```
 
 3.  **Activate the environment:**
-    \`\`\`bash
+    ```bash
     source venv/bin/activate
-    \`\`\`
+    ```
 
 4.  **Install dependencies:**
     This will install \`cupy\`, \`mrcfile\`, \`matplotlib\`, etc.
-    \`\`\`bash
+    ```bash
     pip install -r requirements.txt
-    \`\`\`
+    ```
 
 ---
 
@@ -39,16 +39,16 @@ This tool performs high-speed filament detection on Cryo-EM micrographs using GP
 This script loads motion-corrected MRC files, analyzes them on the GPU, and saves heatmaps and a STAR file of the results.
 
 **Syntax:**
-\`\`\`bash
+```bash
 python main.py [INPUT_DIR] [OUTPUT_DIR] --workers [NUM_WORKERS] --threshold [THRESHOLD]
-\`\`\`
+```
 
 **Example:**
-\`\`\`bash
+```bash
 python main.py path_to_the_sparc_folder/S1/ \\
                path_to_output_folder/ \\
                --workers 12 --threshold 0.175
-\`\`\`
+```
 * **Input Dir:** Your cryoSPARC output folder after fly motioncorr processing.
 * **Output Dir:** Folder where the STAR file and heatmaps will be saved.
 * **--workers:** Number of parallel processes. (Recommendation: 2-3 workers per GPU).
@@ -57,17 +57,17 @@ python main.py path_to_the_sparc_folder/S1/ \\
 Once picking is complete, run this script to link the selected micrographs (e.g., EER files) for further processing in RELION/CryoSPARC.
 
 **Syntax:**
-\`\`\`bash
+```bash
 python build_relion.py --input_dir [RAW_DATA_PATH] --star_file [PICKED_STAR_PATH] --output_folder [DESTINATION]
-\`\`\`
+```
 
 **Example:**
-\`\`\`bash
+```bash
 python build_relion.py \\
     --input_dir path_to_the_sparc_folder/S1/ \\
     --star_file path_to_output_folder/picked_micrographs.star \\
     --output_folder path_to_relion_frames/
-\`\`\`
+```
 
 ---
 
