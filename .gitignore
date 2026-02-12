@@ -13,3 +13,6 @@ trashed_heatmap/
 S2/
 venv/
 cryoem_filament_analysis.ipynb
+amy_FS_model.py
+amy_model.ipynb
+amy_FS_autoencoder.py

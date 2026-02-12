@@ -37,8 +37,8 @@ def run_rsync_transfer(input_dir, star_file_path, output_folder):
             mrc_filename = columns[0]
 
             # Convert to .eer
-            if '_patch_aligned.mrc' in mrc_filename:
-                eer_filename = mrc_filename.replace('_patch_aligned.mrc', '.eer')
+            if '_patch_aligned_doseweighted.mrc' in mrc_filename:
+                eer_filename = mrc_filename.replace('_patch_aligned_doseweighted.mrc', '.eer')
             elif mrc_filename.endswith('.mrc'):
                 eer_filename = mrc_filename.replace('.mrc', '.eer')
             else:

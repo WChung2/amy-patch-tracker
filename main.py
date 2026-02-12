@@ -14,7 +14,6 @@ import pipeline
 def worker_init():
     """Ensures workers ignore Ctrl+C so the main process handles cleanup."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-    # Force 'spawn' context is set in main, but good to be safe regarding signal handling
 
 def main():
     # --- 2. CRITICAL: Handle Ctrl+C to release GPU ---
@@ -56,7 +55,7 @@ def main():
     # Create Output Directory
     os.makedirs(args.output_dir, exist_ok=True)
 
-    input_pattern = os.path.join(args.input_dir, 'motioncorrected/*_patch_aligned.mrc')
+    input_pattern = os.path.join(args.input_dir, 'motioncorrected/*_patch_aligned_doseweighted.mrc')
     output_star = os.path.join(args.output_dir, 'picked_micrographs.star')
 
     config = {
@@ -85,32 +84,15 @@ def main():
     count_picked = 0
     
     # Prepare arguments for map (list of tuples)
-    # We need to pack (file, config) into a single arg because Pool.imap only takes one iterable
     task_args = [(f, config) for f in files]
 
     with open(output_star, 'w') as star_f:
         star_f.write("\ndata_picked_micrographs\n\nloop_\n_rlnMicrographName #1\n_rlnFilamentPatchCount #2\n")
         
-        # --- CHANGED: Use multiprocessing.Pool instead of ProcessPoolExecutor ---
-        # maxtasksperchild=20: Restarts worker after 20 images to clear RAM/GPU memory
+        # maxtasksperchild=1000: Restarts worker after 1000 images to clear RAM/GPU memory
         with multiprocessing.Pool(processes=args.workers, initializer=worker_init, maxtasksperchild=1000) as pool:
             
             try:
-                # imap_unordered is faster as it yields results as soon as they finish
-                # We use a helper wrapper to unpack arguments if needed, 
-                # but process_single_file takes (path, config) so we need a tiny shim or use starmap
-                
-                # Using starmap_async is tricky with tqdm, so we use imap with a lambda helper
-                # Actually, simpler: process_single_file needs to accept a tuple now? 
-                # No, let's use a wrapper function locally or verify pipeline.
-                
-                # Simple fix: Use starmap combined with tqdm is hard. 
-                # Easier strategy: modify task_args to be a single object or use a helper.
-                
-                # Let's use a lambda to unpack arguments for the worker
-                # But you can't pickle lambda. 
-                # So we use `starmap` which supports multiple args, but it consumes everything at once unless we use imap.
-                
                 # BEST APPROACH: Just map a helper function that unpacks the tuple
                 results_iter = pool.imap_unordered(pipeline_wrapper, task_args, chunksize=1)
 
@@ -138,7 +120,6 @@ def main():
 
 # --- Helper wrapper for Pool.imap ---
 def pipeline_wrapper(args):
-    # Unpack the tuple (file, config) and call the real function
     return pipeline.process_single_file(args[0], args[1])
 
 if __name__ == '__main__':
